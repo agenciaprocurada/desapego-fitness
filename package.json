@@ -5,7 +5,11 @@
   "description": "Catálogo online com banco local (SQLite) para roupas fitness seminovas",
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server.js",
-    "fotos": "node scripts/gerar-fotos.js"
+    "fotos": "node scripts/gerar-fotos.js",
+    "exportar": "node --disable-warning=ExperimentalWarning scripts/exportar.js",
+    "publicar": "npm run exportar && git add -A && git commit -m \"Atualiza catálogo\" && git push"
   },
-  "engines": { "node": ">=22.5" }
+  "engines": {
+    "node": ">=22.5"
+  }
 }

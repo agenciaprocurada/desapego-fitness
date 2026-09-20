@@ -118,7 +118,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#lightbox
 
 ['#busca', '#marca', '#tamanho', '#mostrar'].forEach(s => $(s).addEventListener('input', renderizar));
 
-fetch('/api/produtos').then(r => r.json()).then(d => { produtos = d; preencherFiltros(); renderizar(); });
+// Local: usa a API do servidor. Publicado (Vercel): usa o produtos.json gerado pelo painel.
+fetch('/api/produtos').then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .catch(() => fetch('/produtos.json?v=' + Date.now()).then(r => r.json()))
+  .then(d => { produtos = d; preencherFiltros(); renderizar(); })
+  .catch(() => { grade.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--texto-suave)">Não foi possível carregar as peças.</p>'; });
+
+// O link do painel só faz sentido rodando localmente.
+if (!['localhost', '127.0.0.1'].includes(location.hostname)) document.querySelector('.rodape-site a')?.remove();
 </script>
 </body>
 </html>

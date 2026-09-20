@@ -73,3 +73,18 @@ referência, nome, marca, tamanho, preço e valor promocional. Para trocar o nú
 No painel, arraste a peça pela barra "⠿ arrastar" (em cima da foto) para a posição que quiser, ou use as setas ◀ ▶
 para mover uma posição por vez (as setas também funcionam no celular). A ordem é salva na hora e vale para o catálogo.
 Com o filtro de busca preenchido não dá para reordenar; limpe o filtro antes.
+
+## Publicar na Vercel (site online)
+
+A Vercel só serve os arquivos da pasta `public`; o servidor Node e o banco não rodam lá.
+Por isso o painel funciona **só no seu computador** (o arquivo dele fica em `painel/`, fora de `public`, e nunca é publicado). O site online lê o arquivo `public/produtos.json`,
+que o painel atualiza sozinho a cada alteração.
+
+Para colocar as mudanças no ar:
+
+```
+npm run publicar
+```
+
+Isso exporta o banco para `produtos.json`, faz o commit e o push. A Vercel publica em cerca de 1 minuto.
+Na Vercel, o "Output Directory" do projeto precisa ser `public`.

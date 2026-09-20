@@ -6,10 +6,13 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
+const { exportar } = require('./scripts/exportar');
 
 const PORTA = Number(process.env.PORTA || 3000);
 const SENHA_ADMIN = process.env.ADMIN_SENHA || '';   // se definida, protege o /admin e as alterações
 const PUBLIC = path.join(__dirname, 'public');
+// O painel fica FORA de public/ de propósito: só o servidor local o entrega; a Vercel nunca publica.
+const PAINEL = path.join(__dirname, 'painel', 'admin.html');
 const PASTA_IMG = path.join(PUBLIC, 'img');
 const DB_PATH = path.join(__dirname, 'catalogo.db');
 
@@ -63,6 +66,8 @@ function sincronizarFotos() {
 }
 
 const listar = db.prepare('SELECT * FROM produtos ORDER BY ordem, id');
+// Mantém public/produtos.json atualizado para a versão publicada (Vercel).
+function exportarJson() { try { exportar(db); } catch (e) { console.error('Falha ao exportar produtos.json:', e.message); } }
 const buscar = db.prepare('SELECT * FROM produtos WHERE id = ?');
 const atualizar = db.prepare(`
   UPDATE produtos SET nome = ?, marca = ?, tamanho = ?, preco = ?, preco_promocional = ?,
@@ -141,11 +146,14 @@ const servidor = http.createServer(async (req, res) => {
         ids.forEach((id, i) => gravarOrdem.run(i, id));
         db.exec('COMMIT');
       } catch (e) { db.exec('ROLLBACK'); throw e; }
+      exportarJson();
       return json(res, 200, { ok: true, total: ids.length });
     }
     if (rota === '/api/sincronizar' && req.method === 'POST') {
       if (!autorizado(req, res)) return;
-      return json(res, 200, sincronizarFotos());
+      const r = sincronizarFotos();
+      exportarJson();
+      return json(res, 200, r);
     }
     const m = rota.match(/^\/api\/produtos\/(\d+)$/);
     if (m && req.method === 'PUT') {
@@ -167,6 +175,7 @@ const servidor = http.createServer(async (req, res) => {
         'disponivel' in b ? (b.disponivel ? 1 : 0) : atual.disponivel,
         new Date().toISOString(), id,
       );
+      exportarJson();
       return json(res, 200, buscar.get(id));
     }
 
@@ -175,7 +184,8 @@ const servidor = http.createServer(async (req, res) => {
     if (rota === '/') return arquivoEstatico(res, 'index.html');
     if (rota === '/admin') {
       if (!autorizado(req, res)) return;
-      return arquivoEstatico(res, 'admin.html');
+      res.writeHead(200, { 'Content-Type': TIPOS['.html'], 'Cache-Control': 'no-store' });
+      return fs.createReadStream(PAINEL).pipe(res);
     }
     return arquivoEstatico(res, decodeURIComponent(rota));
   } catch (e) {
@@ -185,6 +195,7 @@ const servidor = http.createServer(async (req, res) => {
 });
 
 const r = sincronizarFotos();
+exportarJson();
 console.log(`Fotos: ${r.total} na pasta, ${r.novos} cadastradas agora.`);
 servidor.listen(PORTA, () => {
   console.log(`Catálogo: http://localhost:${PORTA}`);
