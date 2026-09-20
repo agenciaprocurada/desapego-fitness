@@ -1,7 +1,7 @@
-# Banco local (dados de preço ficam só na sua máquina)
-catalogo.db
+# Arquivos temporários do SQLite (o catalogo.db em si é versionado)
 catalogo.db-wal
 catalogo.db-shm
+catalogo.db-journal
 
 node_modules/
 .DS_Store

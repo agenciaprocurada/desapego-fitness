@@ -34,7 +34,7 @@ Isso gera versões leves em `public/img` (grande) e `public/thumb` (miniatura).
 
 ## Onde ficam os dados
 
-- Banco: `catalogo/catalogo.db` (um arquivo só; faça backup copiando ele).
+- Banco: `catalogo/catalogo.db` (um arquivo só). Ele vai junto no GitHub: depois de editar preços, faça `git add catalogo.db`, `git commit` e `git push` para atualizar.
 - Tabela `produtos`: id, codigo (referência), arquivo, nome, marca, tamanho, preco, preco_promocional, disponivel, ordem, atualizado_em.
 
 ## Proteger o painel com senha

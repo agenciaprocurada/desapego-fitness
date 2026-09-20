@@ -16,7 +16,7 @@ const DB_PATH = path.join(__dirname, 'catalogo.db');
 // ---------- Banco ----------
 const db = new DatabaseSync(DB_PATH);
 db.exec(`
-  PRAGMA journal_mode = WAL;
+  PRAGMA journal_mode = DELETE;
   CREATE TABLE IF NOT EXISTS produtos (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     arquivo           TEXT    NOT NULL UNIQUE,
