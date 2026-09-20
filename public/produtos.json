@@ -33,9 +33,9 @@
   "tamanho": "M",
   "preco": 399.9,
   "preco_promocional": 199.9,
-  "disponivel": 1,
+  "disponivel": 0,
   "ordem": 2,
-  "atualizado_em": "2026-09-19T23:53:35.922Z",
+  "atualizado_em": "2026-09-20T19:12:12.741Z",
   "codigo": "001"
  },
  {
@@ -59,9 +59,9 @@
   "tamanho": "G",
   "preco": 369.9,
   "preco_promocional": 179.9,
-  "disponivel": 1,
+  "disponivel": 0,
   "ordem": 4,
-  "atualizado_em": "2026-09-19T23:54:32.293Z",
+  "atualizado_em": "2026-09-20T19:10:51.271Z",
   "codigo": "005"
  },
  {
@@ -241,9 +241,9 @@
   "tamanho": "M",
   "preco": 369.9,
   "preco_promocional": 179.9,
-  "disponivel": 1,
+  "disponivel": 0,
   "ordem": 18,
-  "atualizado_em": "2026-09-20T00:15:20.149Z",
+  "atualizado_em": "2026-09-20T19:11:29.249Z",
   "codigo": "019"
  },
  {
@@ -267,9 +267,9 @@
   "tamanho": "M",
   "preco": 179.9,
   "preco_promocional": 79.9,
-  "disponivel": 1,
+  "disponivel": 0,
   "ordem": 20,
-  "atualizado_em": "2026-09-20T00:12:54.680Z",
+  "atualizado_em": "2026-09-20T19:11:25.177Z",
   "codigo": "021"
  },
  {
