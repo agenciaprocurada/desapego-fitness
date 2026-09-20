@@ -49,18 +49,29 @@ function atribuirCodigos() {
   for (const { id } of semCodigo) gravar.run(String(++ultimo).padStart(3, '0'), id);
 }
 
+// Nome inicial a partir do arquivo: "03_jaqueta-azul_frente-costas.jpg" -> "Jaqueta azul".
+// Arquivos sem descrição (ex.: "01_IMG_5354_5355_frente-costas.jpg") viram "Peça N".
+function nomeInicial(arquivo, n) {
+  const partes = arquivo.replace(/\.[^.]+$/, '').split('_')
+    .filter(p => p && !/^\d+$/.test(p) && !/^img$/i.test(p) && !/^(frente|costas|frente-costas|individual)$/i.test(p));
+  const texto = partes.join(' ').replace(/-/g, ' ').trim();
+  return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : `Peça ${n}`;
+}
+
 // Lê a pasta de fotos e cadastra as que ainda não estão no banco.
 function sincronizarFotos() {
   if (!fs.existsSync(PASTA_IMG)) return { novos: 0, total: 0 };
   const arquivos = fs.readdirSync(PASTA_IMG).filter(f => /\.(jpe?g|png|webp)$/i.test(f)).sort();
   const existe = db.prepare('SELECT 1 FROM produtos WHERE arquivo = ?');
   const inserir = db.prepare('INSERT INTO produtos (arquivo, nome, ordem, atualizado_em) VALUES (?, ?, ?, ?)');
+  // Fotos novas entram no FIM da ordem atual, sem mexer na ordem que a usuária definiu no painel.
+  let ordem = Number(db.prepare('SELECT MAX(ordem) AS m FROM produtos').get().m ?? -1);
   let novos = 0;
-  arquivos.forEach((arquivo, i) => {
-    if (existe.get(arquivo)) return;
-    inserir.run(arquivo, `Peça ${i + 1}`, i, new Date().toISOString());
+  for (const arquivo of arquivos) {
+    if (existe.get(arquivo)) continue;
+    inserir.run(arquivo, nomeInicial(arquivo, ++ordem + 1), ordem, new Date().toISOString());
     novos++;
-  });
+  }
   atribuirCodigos();
   return { novos, total: arquivos.length };
 }

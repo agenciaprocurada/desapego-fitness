@@ -21,11 +21,12 @@ Preencha e clique em **Salvar** (ou aperte Enter). Aparece "Salvo ✓" ao lado. 
 
 ## Adicionar fotos novas
 
-1. Coloque os PNG novos na pasta `final2` (a de sempre).
-2. Rode:
+1. Coloque os PNG novos numa pasta ao lado de `catalogo` (ex.: `final3`). Se o nome do arquivo tiver a descrição
+   (ex.: `03_jaqueta-azul_frente-costas.png`), a peça já entra com o nome "Jaqueta azul".
+2. Rode, informando a pasta:
 
 ```
-npm run fotos
+npm run fotos -- ../final3
 ```
 
 Isso gera versões leves em `public/img` (grande) e `public/thumb` (miniatura).
