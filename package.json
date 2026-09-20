@@ -1,0 +1,11 @@
+{
+  "name": "catalogo-desapegos-fitness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Catálogo online com banco local (SQLite) para roupas fitness seminovas",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "fotos": "node scripts/gerar-fotos.js"
+  },
+  "engines": { "node": ">=22.5" }
+}

@@ -1,0 +1,8 @@
+# Banco local (dados de preço ficam só na sua máquina)
+catalogo.db
+catalogo.db-wal
+catalogo.db-shm
+
+node_modules/
+.DS_Store
+Thumbs.db

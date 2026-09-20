@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel · Desapegos Fitness</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topo">
+    <h1 class="marca">Desapegos <span>FITNESS · PAINEL</span></h1>
+    <p class="slogan">Preencha nome, marca, tamanho e preços. Clique em Salvar (ou aperte Enter) em cada peça.</p>
+    <div class="acoes">
+      <a class="btn contorno" href="/" target="_blank">Ver catálogo</a>
+      <button class="btn claro" id="sincronizar">Buscar fotos novas</button>
+    </div>
+  </header>
+
+  <div class="filtros">
+    <input id="busca" type="search" placeholder="Filtrar por referência, nome, marca, tamanho ou arquivo…">
+    <span class="contagem" id="contagem"></span>
+  </div>
+
+  <main class="painel">
+    <div class="grade" id="grade"></div>
+  </main>
+
+  <div class="aviso" id="aviso"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const grade = $('#grade');
+let produtos = [];
+let avisoTimer;
+
+function aviso(msg) {
+  const el = $('#aviso');
+  el.textContent = msg; el.classList.add('mostrar');
+  clearTimeout(avisoTimer); avisoTimer = setTimeout(() => el.classList.remove('mostrar'), 2200);
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function renderizar() {
+  const busca = $('#busca').value.trim().toLowerCase();
+  const lista = produtos.filter(p => !busca || `${p.codigo} ${p.nome} ${p.marca} ${p.tamanho} ${p.arquivo}`.toLowerCase().includes(busca));
+  $('#contagem').textContent = `${lista.length} de ${produtos.length} peças`;
+
+  grade.innerHTML = lista.map(p => `
+    <article class="card editar ${p.disponivel ? '' : 'vendido'}" data-id="${p.id}" draggable="${busca ? 'false' : 'true'}">
+      <div class="arrastar" title="Arraste para mudar a ordem">
+        <button type="button" class="mover" data-dir="-1" aria-label="Mover para trás">◀</button>
+        <span>⠿ arrastar</span>
+        <button type="button" class="mover" data-dir="1" aria-label="Mover para frente">▶</button>
+      </div>
+      <span class="selo ref">REF ${esc(p.codigo)}</span>
+      <img class="foto" src="/thumb/${encodeURIComponent(p.arquivo)}" alt="" loading="lazy">
+      <div class="info">
+        <div><label>Nome</label><input type="text" name="nome" value="${esc(p.nome)}" placeholder="Ex.: Conjunto top + short"></div>
+        <div class="linha">
+          <div><label>Marca</label><input type="text" name="marca" value="${esc(p.marca)}" placeholder="Ex.: Alto Giro" list="marcas"></div>
+          <div><label>Tamanho</label><input type="text" name="tamanho" value="${esc(p.tamanho)}" placeholder="P, M, G, 38…" list="tamanhos"></div>
+        </div>
+        <div class="linha">
+          <div><label>Preço (R$)</label><input type="number" name="preco" step="0.01" min="0" inputmode="decimal" value="${p.preco ?? ''}" placeholder="0,00"></div>
+          <div><label>Promocional (R$)</label><input type="number" name="preco_promocional" step="0.01" min="0" inputmode="decimal" value="${p.preco_promocional ?? ''}" placeholder="0,00"></div>
+        </div>
+        <div class="rodape">
+          <label><input type="checkbox" name="disponivel" ${p.disponivel ? 'checked' : ''}> Disponível</label>
+          <span class="status"></span>
+          <button type="button" class="btn salvar">Salvar</button>
+        </div>
+        <div class="arquivo">${esc(p.arquivo)}</div>
+      </div>
+    </article>`).join('');
+
+  const marcas = [...new Set(produtos.map(p => p.marca).filter(Boolean))].sort();
+  const tamanhos = [...new Set(produtos.map(p => p.tamanho).filter(Boolean))].sort();
+  $('#marcas').innerHTML = marcas.map(m => `<option value="${esc(m)}">`).join('');
+  $('#tamanhos').innerHTML = tamanhos.map(t => `<option value="${esc(t)}">`).join('');
+}
+
+async function salvar(card) {
+  const id = card.dataset.id;
+  const status = card.querySelector('.status');
+  const dados = {};
+  card.querySelectorAll('input').forEach(i => { dados[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
+
+  status.className = 'status'; status.textContent = 'Salvando…';
+  try {
+    const r = await fetch(`/api/produtos/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados),
+    });
+    const resp = await r.json();
+    if (!r.ok) throw new Error(resp.erro || 'Erro ao salvar');
+    const i = produtos.findIndex(p => p.id == id);
+    produtos[i] = resp;
+    card.classList.toggle('vendido', !resp.disponivel);
+    card.classList.remove('alterado');
+    status.className = 'status ok'; status.textContent = 'Salvo ✓';
+    setTimeout(() => { if (status.textContent === 'Salvo ✓') status.textContent = ''; }, 1800);
+  } catch (e) {
+    status.className = 'status erro'; status.textContent = e.message;
+  }
+}
+
+grade.addEventListener('input', e => e.target.closest('.card')?.classList.add('alterado'));
+grade.addEventListener('change', e => {
+  const card = e.target.closest('.card');
+  if (card && e.target.type === 'checkbox') salvar(card);
+});
+grade.addEventListener('click', e => {
+  const btn = e.target.closest('.salvar');
+  if (btn) salvar(btn.closest('.card'));
+  const mover = e.target.closest('.mover');
+  if (mover) moverCard(mover.closest('.card'), Number(mover.dataset.dir));
+});
+
+// ---- Reordenar (arrastar ou setas) ----
+let arrastando = null;
+
+grade.addEventListener('dragstart', e => {
+  const card = e.target.closest('.card');
+  if (!card || card.draggable === false || e.target.tagName === 'INPUT') { e.preventDefault(); return; }
+  arrastando = card;
+  card.classList.add('arrastando');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', card.dataset.id);
+});
+grade.addEventListener('dragover', e => {
+  if (!arrastando) return;
+  e.preventDefault();
+  const alvo = e.target.closest('.card');
+  if (!alvo || alvo === arrastando) return;
+  const r = alvo.getBoundingClientRect();
+  const depois = e.clientX > r.left + r.width / 2;
+  alvo.parentNode.insertBefore(arrastando, depois ? alvo.nextSibling : alvo);
+});
+grade.addEventListener('drop', e => e.preventDefault());
+grade.addEventListener('dragend', () => {
+  if (!arrastando) return;
+  arrastando.classList.remove('arrastando');
+  arrastando = null;
+  salvarOrdem();
+});
+
+function moverCard(card, dir) {
+  if ($('#busca').value.trim()) { aviso('Limpe o filtro para reordenar.'); return; }
+  const irmao = dir < 0 ? card.previousElementSibling : card.nextElementSibling;
+  if (!irmao) return;
+  card.parentNode.insertBefore(card, dir < 0 ? irmao : irmao.nextSibling);
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  salvarOrdem();
+}
+
+async function salvarOrdem() {
+  const ids = [...grade.querySelectorAll('.card')].map(c => Number(c.dataset.id));
+  if (ids.length !== produtos.length) { aviso('Limpe o filtro para reordenar.'); renderizar(); return; }
+  produtos.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+  produtos.forEach((p, i) => { p.ordem = i; });
+  try {
+    const r = await fetch('/api/ordem', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+    if (!r.ok) throw new Error((await r.json()).erro || 'Erro');
+    aviso('Ordem salva ✓');
+  } catch (e) {
+    aviso('Erro ao salvar a ordem: ' + e.message);
+  }
+}
+grade.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); salvar(e.target.closest('.card')); }
+});
+
+$('#busca').addEventListener('input', renderizar);
+
+$('#sincronizar').addEventListener('click', async () => {
+  const r = await fetch('/api/sincronizar', { method: 'POST' }).then(r => r.json());
+  aviso(r.novos ? `${r.novos} foto(s) nova(s) cadastrada(s)` : 'Nenhuma foto nova. Rode "npm run fotos" se adicionou arquivos em final2.');
+  await carregar();
+});
+
+async function carregar() {
+  produtos = await fetch('/api/produtos').then(r => r.json());
+  renderizar();
+}
+carregar();
+</script>
+<datalist id="marcas"></datalist>
+<datalist id="tamanhos"></datalist>
+</body>
+</html>

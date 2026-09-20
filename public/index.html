@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Desapegos Fitness · Catálogo</title>
+  <meta name="description" content="Roupas fitness seminovas e em ótimo estado. Looks que ganham novas histórias.">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topo">
+    <img class="logo" src="/logo.png" alt="" onerror="this.remove()">
+    <h1 class="marca">Desapegos <span>FITNESS</span></h1>
+    <p class="slogan">Roupas fitness seminovas e em ótimo estado · Looks que ganham novas histórias</p>
+  </header>
+
+  <div class="filtros">
+    <input id="busca" type="search" placeholder="Buscar por referência, nome ou marca…">
+    <select id="marca"><option value="">Todas as marcas</option></select>
+    <select id="tamanho"><option value="">Todos os tamanhos</option></select>
+    <select id="mostrar">
+      <option value="disponiveis">Só disponíveis</option>
+      <option value="todos">Todos (inclui vendidos)</option>
+    </select>
+    <span class="contagem" id="contagem"></span>
+  </div>
+
+  <main class="grade" id="grade"></main>
+  <p class="rodape-site">Desapegos Fitness · <a href="/admin">painel</a></p>
+
+  <div class="lightbox" id="lightbox">
+    <button class="fechar" aria-label="Fechar">×</button>
+    <img id="lightbox-img" alt="">
+    <div class="legenda" id="lightbox-legenda"></div>
+  </div>
+
+<script>
+const brl = v => v == null ? '' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const WHATSAPP = '5551981126240';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function linkWhats(p) {
+  const linhas = [
+    'Olá! Tenho interesse nesta peça do catálogo Desapegos Fitness:',
+    '',
+    `Referência: ${p.codigo}`,
+    `Peça: ${p.nome || 'sem nome'}`,
+    p.marca && `Marca: ${p.marca}`,
+    p.tamanho && `Tamanho: ${p.tamanho}`,
+    p.preco != null && `Preço: ${brl(p.preco)}`,
+    p.preco_promocional != null && `Valor promocional: ${brl(p.preco_promocional)}`,
+  ].filter(l => l === '' || (l && l !== true));
+  return `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(linhas.join('\n'))}`;
+}
+let produtos = [];
+
+const $ = s => document.querySelector(s);
+const grade = $('#grade');
+
+function preencherFiltros() {
+  const marcas = [...new Set(produtos.map(p => p.marca).filter(Boolean))].sort();
+  const tamanhos = [...new Set(produtos.map(p => p.tamanho).filter(Boolean))].sort();
+  $('#marca').innerHTML = '<option value="">Todas as marcas</option>' + marcas.map(m => `<option>${m}</option>`).join('');
+  $('#tamanho').innerHTML = '<option value="">Todos os tamanhos</option>' + tamanhos.map(t => `<option>${t}</option>`).join('');
+}
+
+function renderizar() {
+  const busca = $('#busca').value.trim().toLowerCase();
+  const marca = $('#marca').value;
+  const tamanho = $('#tamanho').value;
+  const mostrar = $('#mostrar').value;
+
+  const lista = produtos.filter(p =>
+    (mostrar === 'todos' || p.disponivel) &&
+    (!marca || p.marca === marca) &&
+    (!tamanho || p.tamanho === tamanho) &&
+    (!busca || `${p.codigo} ${p.nome} ${p.marca} ${p.tamanho}`.toLowerCase().includes(busca))
+  );
+
+  $('#contagem').textContent = `${lista.length} ${lista.length === 1 ? 'peça' : 'peças'}`;
+  grade.innerHTML = lista.map(p => {
+    const temPromo = p.preco_promocional != null && (p.preco == null || p.preco_promocional < p.preco);
+    let precos;
+    if (temPromo) {
+      precos = `${p.preco != null ? `<span class="preco-antigo">${brl(p.preco)}</span>` : ''}<span class="preco preco-promo">${brl(p.preco_promocional)}</span>`;
+    } else if (p.preco != null) {
+      precos = `<span class="preco">${brl(p.preco)}</span>`;
+    } else {
+      precos = `<span class="sem-preco">consulte o valor</span>`;
+    }
+    const detalhes = [p.marca && `<b>${esc(p.marca)}</b>`, p.tamanho && `Tam. ${esc(p.tamanho)}`].filter(Boolean).join(' · ');
+    return `
+      <article class="card ${p.disponivel ? '' : 'vendido'}" data-id="${p.id}">
+        ${!p.disponivel ? '<span class="selo vendido">Vendido</span>' : ''}
+        <span class="selo ref">REF ${esc(p.codigo)}</span>
+        <img class="foto" src="/thumb/${encodeURIComponent(p.arquivo)}" alt="${esc(p.nome)}" loading="lazy">
+        <div class="info">
+          <p class="nome">${esc(p.nome) || 'Sem nome'}</p>
+          <p class="detalhes">${detalhes || '&nbsp;'}</p>
+          <div class="precos">${precos}</div>
+          ${p.disponivel ? `<a class="btn whats" href="${linkWhats(p)}" target="_blank" rel="noopener">Quero essa peça</a>` : ''}
+        </div>
+      </article>`;
+  }).join('') || '<p style="grid-column:1/-1;text-align:center;color:var(--texto-suave)">Nenhuma peça encontrada.</p>';
+}
+
+grade.addEventListener('click', e => {
+  const img = e.target.closest('.foto');
+  if (!img) return;
+  const p = produtos.find(x => x.id == img.closest('.card').dataset.id);
+  $('#lightbox-img').src = `/img/${encodeURIComponent(p.arquivo)}`;
+  const texto = [`REF ${p.codigo}`, p.nome, p.marca, p.tamanho && `Tam. ${p.tamanho}`].filter(Boolean).join(' · ');
+  $('#lightbox-legenda').innerHTML = `<span>${esc(texto)}</span>` + (p.disponivel ? `<a class="btn whats" href="${linkWhats(p)}" target="_blank" rel="noopener">Quero essa peça</a>` : '');
+  $('#lightbox').classList.add('aberto');
+});
+$('#lightbox').addEventListener('click', e => { if (e.target.tagName !== 'IMG' && !e.target.closest('a')) $('#lightbox').classList.remove('aberto'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#lightbox').classList.remove('aberto'); });
+
+['#busca', '#marca', '#tamanho', '#mostrar'].forEach(s => $(s).addEventListener('input', renderizar));
+
+fetch('/api/produtos').then(r => r.json()).then(d => { produtos = d; preencherFiltros(); renderizar(); });
+</script>
+</body>
+</html>
