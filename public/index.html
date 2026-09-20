@@ -34,8 +34,12 @@
 
   <div class="lightbox" id="lightbox">
     <button class="fechar" aria-label="Fechar">×</button>
-    <img id="lightbox-img" alt="">
-    <div class="legenda" id="lightbox-legenda"></div>
+    <div class="oferta">
+      <canvas id="oferta-canvas" width="1080" height="1080"></canvas>
+      <div class="oferta-acoes">
+        <button type="button" class="btn baixar" id="baixar">⬇ Download imagem</button>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -108,16 +112,135 @@ function renderizar() {
   }).join('') || '<p style="grid-column:1/-1;text-align:center;color:var(--texto-suave)">Nenhuma peça encontrada.</p>';
 }
 
-grade.addEventListener('click', e => {
+// ---------- Arte quadrada da oferta (1080x1080) ----------
+const FONTE = '"Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const CORES = { creme: '#f8f4ee', escuro: '#14524b', verde: '#1f7a6f', claro: '#8fc9b4', texto: '#143d3a', suave: '#5b7572', promo: '#c8553d', branco: '#ffffff' };
+let ofertaAtual = null;
+
+const carregarImg = src => new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = erro; i.src = src; });
+
+// Desenha a imagem preenchendo a área (corta o excesso, como object-fit: cover).
+function desenharCover(ctx, img, x, y, w, h) {
+  const r = Math.max(w / img.width, h / img.height);
+  const sw = w / r, sh = h / r;
+  ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
+}
+
+function quebrarLinhas(ctx, texto, maxLargura, maxLinhas) {
+  const palavras = String(texto).split(/\s+/); const linhas = []; let atual = '';
+  for (const p of palavras) {
+    const teste = atual ? atual + ' ' + p : p;
+    if (ctx.measureText(teste).width > maxLargura && atual) { linhas.push(atual); atual = p; } else atual = teste;
+  }
+  if (atual) linhas.push(atual);
+  if (linhas.length > maxLinhas) { linhas.length = maxLinhas; linhas[maxLinhas - 1] = linhas[maxLinhas - 1].replace(/\s?\S*$/, '…'); }
+  return linhas;
+}
+
+function pilula(ctx, texto, cx, y, fundo, cor, fonte) {
+  ctx.font = fonte; const w = ctx.measureText(texto).width + 44, h = 48;
+  ctx.fillStyle = fundo; ctx.beginPath(); ctx.roundRect(cx - w / 2, y, w, h, 24); ctx.fill();
+  ctx.fillStyle = cor; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(texto, cx, y + h / 2 + 1);
+  return y + h;
+}
+
+async function gerarOferta(p) {
+  const cv = $('#oferta-canvas'); const W = cv.width, H = cv.height;
+  const ctx = cv.getContext('2d');
+  const [foto, logo] = await Promise.all([
+    carregarImg(`/img/${encodeURIComponent(p.arquivo)}`),
+    carregarImg('/logo.png').catch(() => null),
+  ]);
+
+  ctx.fillStyle = CORES.creme; ctx.fillRect(0, 0, W, H);
+
+  // Foto à esquerda, altura inteira
+  const fw = 620;
+  desenharCover(ctx, foto, 0, 0, fw, H);
+
+  // Painel à direita
+  const px = fw, pw = W - fw, cx = px + pw / 2;
+  ctx.fillStyle = CORES.escuro; ctx.fillRect(px, 0, 6, H);
+  let y = 56;
+
+  if (logo) {
+    const r = 92;
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, y + r, r, 0, Math.PI * 2); ctx.clip();
+    ctx.drawImage(logo, cx - r, y, r * 2, r * 2); ctx.restore();
+    ctx.lineWidth = 5; ctx.strokeStyle = CORES.claro; ctx.beginPath(); ctx.arc(cx, y + r, r, 0, Math.PI * 2); ctx.stroke();
+    y += r * 2 + 44;
+  } else {
+    ctx.fillStyle = CORES.escuro; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.font = `italic bold 52px ${FONTE}`; ctx.fillText('Desapegos', cx, y + 50);
+    ctx.font = `600 26px ${FONTE}`; ctx.fillStyle = CORES.verde; ctx.fillText('F I T N E S S', cx, y + 90);
+    y += 130;
+  }
+
+  y = pilula(ctx, `REF ${p.codigo}`, cx, y, CORES.escuro, CORES.claro, `bold 24px ${FONTE}`) + 36;
+
+  // Nome
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = CORES.texto; ctx.font = `bold 44px ${FONTE}`;
+  for (const l of quebrarLinhas(ctx, p.nome || 'Peça', pw - 70, 3)) { ctx.fillText(l, cx, y + 40); y += 52; }
+  y += 14;
+
+  // Marca e tamanho
+  const det = [p.marca, p.tamanho && `Tam. ${p.tamanho}`].filter(Boolean).join('  ·  ');
+  if (det) { ctx.fillStyle = CORES.suave; ctx.font = `28px ${FONTE}`; ctx.fillText(det, cx, y + 28); y += 60; }
+
+  // Linha divisória
+  y += 14; ctx.strokeStyle = CORES.claro; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx - 90, y); ctx.lineTo(cx + 90, y); ctx.stroke(); y += 40;
+
+  // Preços
+  const temPromo = p.preco_promocional != null && (p.preco == null || p.preco_promocional < p.preco);
+  if (temPromo) {
+    if (p.preco != null) {
+      ctx.fillStyle = CORES.suave; ctx.font = `30px ${FONTE}`;
+      const t = `de ${brl(p.preco)}`; ctx.fillText(t, cx, y + 30);
+      const w = ctx.measureText(t).width; ctx.strokeStyle = CORES.suave; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx - w / 2, y + 20); ctx.lineTo(cx + w / 2, y + 20); ctx.stroke();
+      y += 52;
+    }
+    ctx.fillStyle = CORES.suave; ctx.font = `26px ${FONTE}`; ctx.fillText('por', cx, y + 26); y += 34;
+    ctx.fillStyle = CORES.promo; ctx.font = `bold 72px ${FONTE}`; ctx.fillText(brl(p.preco_promocional), cx, y + 68); y += 90;
+  } else if (p.preco != null) {
+    ctx.fillStyle = CORES.escuro; ctx.font = `bold 72px ${FONTE}`; ctx.fillText(brl(p.preco), cx, y + 68); y += 90;
+  } else {
+    ctx.fillStyle = CORES.suave; ctx.font = `italic 32px ${FONTE}`; ctx.fillText('Consulte o valor', cx, y + 32); y += 60;
+  }
+
+  if (!p.disponivel) { y += 10; pilula(ctx, 'VENDIDO', cx, y, CORES.suave, CORES.branco, `bold 26px ${FONTE}`); }
+
+  // Rodapé
+  ctx.fillStyle = CORES.suave; ctx.textAlign = 'center';
+  ctx.font = `23px ${FONTE}`; ctx.fillText('Roupas fitness seminovas', cx, H - 122); ctx.fillText('e em ótimo estado', cx, H - 92);
+  ctx.font = `bold 28px ${FONTE}`; ctx.fillStyle = CORES.escuro; ctx.fillText('WhatsApp (51) 98112-6240', cx, H - 48);
+}
+
+grade.addEventListener('click', async e => {
   const img = e.target.closest('.foto');
   if (!img) return;
   const p = produtos.find(x => x.id == img.closest('.card').dataset.id);
-  $('#lightbox-img').src = `/img/${encodeURIComponent(p.arquivo)}`;
-  const texto = [`REF ${p.codigo}`, p.nome, p.marca, p.tamanho && `Tam. ${p.tamanho}`].filter(Boolean).join(' · ');
-  $('#lightbox-legenda').innerHTML = `<span>${esc(texto)}</span>` + (p.disponivel ? `<a class="btn whats" href="${linkWhats(p)}" target="_blank" rel="noopener">Quero essa peça</a>` : '');
+  ofertaAtual = p;
   $('#lightbox').classList.add('aberto');
+  $('#baixar').disabled = true;
+  try { await gerarOferta(p); $('#baixar').disabled = false; }
+  catch (err) { console.error(err); }
 });
-$('#lightbox').addEventListener('click', e => { if (e.target.tagName !== 'IMG' && !e.target.closest('a')) $('#lightbox').classList.remove('aberto'); });
+
+$('#baixar').addEventListener('click', () => {
+  if (!ofertaAtual) return;
+  $('#oferta-canvas').toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `desapegos-fitness-ref-${ofertaAtual.codigo}.jpg`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }, 'image/jpeg', 0.92);
+});
+
+$('#lightbox').addEventListener('click', e => { if (!e.target.closest('.oferta')) $('#lightbox').classList.remove('aberto'); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#lightbox').classList.remove('aberto'); });
 
 ['#busca', '#marca', '#tamanho', '#mostrar'].forEach(s => $(s).addEventListener('input', renderizar));

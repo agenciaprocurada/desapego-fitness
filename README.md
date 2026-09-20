@@ -88,3 +88,9 @@ npm run publicar
 
 Isso exporta o banco para `produtos.json`, faz o commit e o push. A Vercel publica em cerca de 1 minuto.
 Na Vercel, o "Output Directory" do projeto precisa ser `public`.
+
+## Arte da oferta (imagem para postar)
+
+No catálogo, clicar na foto de uma peça abre uma arte quadrada (1080x1080, formato de post) com a foto,
+a logo, referência, nome, marca, tamanho e preços. O botão **Download imagem** baixa essa arte como JPG
+(`desapegos-fitness-ref-001.jpg`) para postar no Instagram, status do WhatsApp etc.
