@@ -40,7 +40,14 @@ a { color: inherit; }
 }
 .topo .marca span { color: var(--verde-claro); font-style: normal; letter-spacing: 4px; font-weight: 600; font-size: 16px; display: block; }
 .topo .slogan { margin: 6px 0 0; font-size: 13px; opacity: 0.85; }
-.topo img.logo { height: 90px; width: auto; border-radius: 50%; margin-bottom: 8px; }
+.topo img.logo {
+  height: 132px; width: 132px; border-radius: 50%; object-fit: cover;
+  border: 3px solid var(--verde-claro); background: var(--creme);
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+}
+.topo .cabecalho { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; text-align: left; }
+.topo .cabecalho .textos { text-align: center; }
+@media (max-width: 599px) { .topo img.logo { height: 110px; width: 110px; } }
 .topo .acoes { margin-top: 10px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
 /* Filtros */
